@@ -7,7 +7,7 @@ import { useAppStore } from "./store/useAppStore";
 import { useState } from "react";
 
 function App() {
-  const { errorMessage, metrics, compressedImageHex } = useAppStore();
+  const { errorMessage, metrics, compressedImageHex, imageFile } = useAppStore();
   const [compressedImageUrl, setCompressedImageUrl] = useState<string | null>(null);
 
   // Convert hex string to blob and create URL for preview/download
@@ -44,20 +44,113 @@ function App() {
             </div>
           )}
           {/* Preview for compressed JPG/PNG */}
-          {compressedImageUrl && (
-            <div className="mt-4">
-              <img src={compressedImageUrl} alt="Compressed Preview" className="max-w-xs rounded shadow" />
-              {/* Show compressed image size if available */}
-              {metrics?.compressed_size_bytes && (
-                <p className="text-xs text-slate-400 mt-1">
-                  Compressed size: {
-                    metrics.compressed_size_bytes < 1024 * 1024
-                      ? `${(metrics.compressed_size_bytes / 1024).toFixed(1)} KB`
-                      : `${(metrics.compressed_size_bytes / (1024 * 1024)).toFixed(2)} MB`
-                  }
-                </p>
-              )}
-              <a href={compressedImageUrl} download="compressed_image.png" className="block mt-2 px-4 py-2 bg-green-600 text-white rounded font-bold text-center">Download Compressed Image</a>
+          {compressedImageUrl && metrics && (
+            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Image Preview */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-200 mb-3">Compressed Image</h3>
+                <img src={compressedImageUrl} alt="Compressed Preview" className="w-full max-w-sm rounded shadow" />
+                <a href={compressedImageUrl} download="compressed_image.png" className="block mt-3 px-4 py-2 bg-green-600 text-white rounded font-bold text-center">
+                  Download Compressed Image
+                </a>
+              </div>
+              
+              {/* Compression Metrics */}
+              <div>
+                <h3 className="text-lg font-semibold text-slate-200 mb-3">Compression Details</h3>
+                <div className="space-y-3 bg-slate-700 p-4 rounded">
+                  {/* Original Size */}
+                  {(metrics.original_size_bytes || imageFile) && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Original Size:</span>
+                      <span className="text-slate-100 font-semibold">
+                        {(() => {
+                          const originalSize = metrics.original_size_bytes || imageFile?.size || 0;
+                          return originalSize < 1024 * 1024
+                            ? `${(originalSize / 1024).toFixed(1)} KB`
+                            : `${(originalSize / (1024 * 1024)).toFixed(2)} MB`;
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Compressed Size */}
+                  {metrics.compressed_size_bytes && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Compressed Size:</span>
+                      <span className="text-slate-100 font-semibold">
+                        {metrics.compressed_size_bytes < 1024 * 1024
+                          ? `${(metrics.compressed_size_bytes / 1024).toFixed(1)} KB`
+                          : `${(metrics.compressed_size_bytes / (1024 * 1024)).toFixed(2)} MB`
+                        }
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Size Reduction */}
+                  {(metrics.original_size_bytes || imageFile) && metrics.compressed_size_bytes && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Size Reduction:</span>
+                      <span className="text-slate-100 font-semibold">
+                        {(() => {
+                          const originalSize = metrics.original_size_bytes || imageFile?.size || 0;
+                          const reduction = originalSize - metrics.compressed_size_bytes;
+                          return reduction < 1024 * 1024
+                            ? `${(reduction / 1024).toFixed(1)} KB`
+                            : `${(reduction / (1024 * 1024)).toFixed(2)} MB`;
+                        })()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Compression Ratio */}
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Compression Ratio:</span>
+                    <span className="text-slate-100 font-semibold">
+                      {(() => {
+                        if (metrics.compression_ratio) return metrics.compression_ratio;
+                        const originalSize = metrics.original_size_bytes || imageFile?.size || 0;
+                        if (originalSize && metrics.compressed_size_bytes) {
+                          return `${(originalSize / metrics.compressed_size_bytes).toFixed(2)}:1`;
+                        }
+                        return 'N/A';
+                      })()}
+                    </span>
+                  </div>
+                  
+                  {/* Savings Percentage */}
+                  {(metrics.original_size_bytes || imageFile) && metrics.compressed_size_bytes && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Savings Percentage:</span>
+                      <span className="text-green-400 font-semibold">
+                        {(() => {
+                          const originalSize = metrics.original_size_bytes || imageFile?.size || 0;
+                          return (((originalSize - metrics.compressed_size_bytes) / originalSize) * 100).toFixed(1);
+                        })()}%
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Compression Time */}
+                  <div className="flex justify-between">
+                    <span className="text-slate-300">Compression Time:</span>
+                    <span className="text-slate-100 font-semibold">{metrics.processing_time_sec}s</span>
+                  </div>
+                  
+                  {/* Speed/Throughput */}
+                  {(metrics.original_size_bytes || imageFile) && metrics.processing_time_sec && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-300">Throughput:</span>
+                      <span className="text-slate-100 font-semibold">
+                        {(() => {
+                          const originalSize = metrics.original_size_bytes || imageFile?.size || 0;
+                          return ((originalSize / 1024) / metrics.processing_time_sec).toFixed(1);
+                        })()} KB/s
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
           {/* We will add the results components here in the next step */}
